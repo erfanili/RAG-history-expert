@@ -1,0 +1,4 @@
+__pycache__/
+retriever/chunks_single_par.jsonl
+retriever/splade_doc_embs_single_par.pt
+data/
