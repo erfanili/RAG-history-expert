@@ -1,5 +1,6 @@
 # backend_api.py
 import os, sys
+import traceback
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 if ROOT not in sys.path:
     sys.path.insert(0, ROOT)
@@ -9,14 +10,15 @@ from pydantic import BaseModel
 import uvicorn, yaml
 from typing import Any, List, Dict
 
-# import your code module name (change if different)
-import answer_engine
+from src.answer_engine import Config, main
+
+
 
 app = FastAPI(title="WWI Answer Engine API")
 
 # load config once at startup
 with open("config.yaml", "r") as f:
-    cfg = answer_engine.Config(**yaml.safe_load(f))
+    cfg = Config(**yaml.safe_load(f))
 
 class QueryIn(BaseModel):
     question: str
@@ -49,8 +51,9 @@ def answer(payload: QueryIn):
 
     try:
         # your main returns (splade_chunks, llm_output) per posted script
-        splade_chunks, llm_output = answer_engine.main(query=payload.question, config=cfg)
+        splade_chunks, llm_output = main(query=payload.question, config=cfg)
     except Exception as e:
+        traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"backend error: {e}")
 
     response = {

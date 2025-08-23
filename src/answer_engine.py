@@ -2,14 +2,15 @@ import json
 import argparse
 import subprocess
 import yaml
-from retrieve_utils import splade, rerank_with_cross_encoder
+from src.utils import splade, rerank_with_cross_encoder, run_together
+import os
 
 
 class Config:
     def __init__(self, **entries):
         self.__dict__.update(entries)
 
-def run_llm(prompt: str, model: str = "llama3:8b") -> str:
+def run_ollama(prompt: str, model: str = "llama3:8b") -> str:
     """Send prompt to Ollama and return decoded output."""
     result = subprocess.run(
         ["ollama", "run", model],
@@ -107,16 +108,17 @@ Expanded Query:
 
 def main(query,config):
     """Build prompt from query+chunks, run LLM, and return output."""
-    with open(config.chunks_path, "r") as f:
-        chunks = [json.loads(line) for line in f]
-    expanded_query = expand_query(query)
-    splade_chunks = splade(query=query, chunks=chunks, doc_embs=config.splade_doc_embds,topk=config.topk)
+    
+    expanded_query = query
+    # expanded_query = expand_query(query)
+    splade_chunks = splade(query=query, chunks_path=config.chunks_relative_path, doc_embs_path=config.splade_embds_relative_path,topk=config.topk)
     # breakpoint()
     rerank_chunks = rerank_with_cross_encoder(query=query, docs=splade_chunks)
     # print(rerank_chunks,"\n\n\n\n")
     prompt = build_prompt(chunks=rerank_chunks, question=expanded_query)
     # print(prompt)
-    output = run_llm(prompt)
+    # output = run_ollama(prompt)
+    output = run_together(prompt)
     
 
     return splade_chunks, output

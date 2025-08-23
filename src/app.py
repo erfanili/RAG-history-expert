@@ -51,11 +51,6 @@ def search_commons_images_with_captions(keyword, limit=5):
         if not imageinfo:
             continue
         image_url = imageinfo[0]["url"]
-
-        # Step 3: Construct Wikipedia file page URL (mobile version)
-        file_title_encoded = urllib.parse.quote(title)
-        wiki_url = f"https://en.m.wikipedia.org/wiki/{file_title_encoded}"
-
         caption = re.sub(r'^File:|(\.jpg|\.png)$', '', title, flags=re.IGNORECASE)
 
         return image_url ,caption
