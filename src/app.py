@@ -21,42 +21,50 @@ from IPython.display import Image, display
 from bs4 import BeautifulSoup
 import urllib.parse
 
-def search_commons_images_with_captions(keyword, limit=5):
-    # Step 1: Search for images
-    search_url = "https://commons.wikimedia.org/w/api.php"
-    params = {
+import requests
+import re
+
+import requests
+
+def get_wikipedia_infobox_image(query: str):
+    # Step 1: Search for the page
+    search_url = "https://en.wikipedia.org/w/api.php"
+    search_params = {
         "action": "query",
-        "generator": "search",
-        "gsrsearch": keyword,
-        "gsrnamespace": 6,
-        "gsrlimit": limit,
-        "prop": "imageinfo",
-        "iiprop": "url",
+        "list": "search",
+        "srsearch": query,
         "format": "json"
     }
+    search_response = requests.get(search_url, params=search_params)
+    search_response.raise_for_status()
+    search_data = search_response.json()
 
-    response = requests.get(search_url, params=params)
-    response.raise_for_status()
-    data = response.json()
-    pages = data.get("query", {}).get("pages", {})
+    search_results = search_data.get("query", {}).get("search", [])
+    if not search_results:
+        return None
 
-    if not pages:
-        print("No results found.")
-        return
+    title = search_results[0]["title"]
 
-    # Step 2: Iterate over results
+    # Step 2: Get page data with page image
+    page_url = "https://en.wikipedia.org/w/api.php"
+    page_params = {
+        "action": "query",
+        "titles": title,
+        "prop": "pageimages",
+        "format": "json",
+        "pithumbsize": 600  # image size in pixels
+    }
+    page_response = requests.get(page_url, params=page_params)
+    page_response.raise_for_status()
+    page_data = page_response.json()
+
+    pages = page_data.get("query", {}).get("pages", {})
     for page in pages.values():
-        title = page.get("title")  # e.g. "File:Example.jpg"
-        imageinfo = page.get("imageinfo", [])
-        if not imageinfo:
-            continue
-        image_url = imageinfo[0]["url"]
-        caption = re.sub(r'^File:|(\.jpg|\.png)$', '', title, flags=re.IGNORECASE)
+        image_url = page.get("thumbnail", {}).get("source")
+        if image_url:
+            return image_url, title
 
-        return image_url ,caption
-
-# Example usage
-search_commons_images_with_captions("Battle of Somme", limit=3)
+    return None
 
 
 
@@ -121,13 +129,13 @@ with st.container():
                 if not question or not question.strip():
                     st.error("Enter a question.")
                 else:
-                    res = search_commons_images_with_captions(question)
-
+                    
                     payload = {"question": question.strip()}
                     # network call
                     try:
                         with st.spinner("Thinking..."):
                             result = safe_post(BACKEND_URL, payload, REQUEST_TIMEOUT)
+                   
                     except requests.exceptions.Timeout:
                         st.error(f"Backend timed out after {REQUEST_TIMEOUT}s.")
                     except requests.exceptions.ConnectionError:
@@ -144,12 +152,17 @@ with st.container():
                     else:
                         # Normalize likely fields
                         answer = result.get("answer") or result.get("text") or result.get("result") or ""
+                        keyword = result.get("keyword")
                         sources: List[Any] = result.get("sources") or result.get("citations") or []
                         confidence = result.get("confidence")
 
-                        if res:
-                            url, caption = res
-                            st.image(url, caption=caption, use_container_width=True)
+                                          
+                        wiki_img = get_wikipedia_infobox_image(keyword)
+                  
+                        if wiki_img:
+                            image_url, caption = wiki_img
+                            st.image(image_url, caption=caption, use_container_width=True)
+                        
 
                         # st.subheader("Answer")
                         if isinstance(answer, dict) or isinstance(answer, list):

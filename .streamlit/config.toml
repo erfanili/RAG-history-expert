@@ -1,0 +1,7 @@
+[theme]
+base="dark"
+primaryColor="#8B0000"            # deep “blood red” accents
+backgroundColor="#2E2E2E"         # charcoal, for high contrast text
+secondaryBackgroundColor="#5E4B3C" # muddy brown, like vintage kit
+textColor="#F5F5DC"               # parchment-cream
+font="serif"                      # evokes old field manuals

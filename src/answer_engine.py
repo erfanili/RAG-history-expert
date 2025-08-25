@@ -2,9 +2,16 @@ import json
 import argparse
 import subprocess
 import yaml
-from src.utils import splade, rerank_with_cross_encoder, run_together
+import sys,os
+ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+if ROOT not in sys.path:
+    sys.path.insert(0, ROOT)
+from src.utils import splade, rerank_with_cross_encoder, run_together, zillis
 import os
+from dotenv import load_dotenv
 
+
+load_dotenv(override=True)
 
 class Config:
     def __init__(self, **entries):
@@ -47,73 +54,107 @@ def build_prompt(chunks, question):
     
     return prompt
 
+import subprocess
+
 def expand_query(query):
     prompt = f"""
 You are a query rewriter for a retrieval system.
 Rewrite vague or underspecified queries into expanded, precise questions that
-makes the query unambiguous.
+make the query unambiguous. Also give a keyword that best represents the visual or symbolic core of the query,
+suitable for searching images on Wikimedia Commons or similar platforms.
 
 Here are some examples:
 
 Example 1:
 Query: What happened in 1915?
 Expanded Query: What happened in 1915 during World War I?
+Keyword: World War I 1915
 
 Example 2:
 Query: What happened during summer 1915?
-Expanded Query: What were the major  events during summer 1915 in World War I?
+Expanded Query: What were the major events during summer 1915 in World War I?
+Keyword: World War I summer 1915
 
 Example 3:
 Query: Who was Haig?
-Expanded Query: Who was Haig during World War I? What was major facts about him in the war?
+Expanded Query: Who was Haig during World War I? What were major facts about him in the war?
+Keyword: Douglas Haig
 
 Example 4:
 Query: What is Gallipoli?
 Expanded Query: What was the Gallipoli campaign during World War I?
+Keyword: Gallipoli campaign
 
 Example 5:
 Query: Why did the US join the war?
-Expanded Query: What were the reasons that led the United States to enter World War I??
+Expanded Query: What were the reasons that led the United States to enter World War I?
+Keyword: US entry World War I
 
 Example 6:
 Query: Outcome of Verdun?
-Expanded Query: What was the outcome of the Battle of Verdun, including casualties, morale??
+Expanded Query: What was the outcome of the Battle of Verdun, including casualties and morale?
+Keyword: Battle of Verdun
 
 Example 7:
 Query: What countries won the war?
-Expanded Query: Which countries were victorious at the end? Name them.
-
-Example 7:
-Query: German casualties in 1916
-Expanded Query: What was the number of German casualties in the war during the year 1916? Give numbers.
+Expanded Query: Which countries were victorious at the end of World War I? Name them.
+Keyword: World War I victors
 
 Example 8:
-Query: When did the war begin?
-Expanded Query: What was the exact date when the war began?
+Query: German casualties in 1916
+Expanded Query: What was the number of German casualties in the war during the year 1916? Give numbers.
+Keyword: German army 1916
 
 Example 9:
-Query: Who was british military commander?
-Expanded Query: Who was british military commander? Name them.
-Now give the Expanded Query. Keep it concises and tight. Don't talk to the user. Just emit the expanded query. Never introduce specific names, places, or outcomes unless they are already in the original query.
+Query: When did the war begin?
+Expanded Query: What was the exact date when World War I began?
+Keyword: World War I outbreak
+
+Example 10:
+Query: Who was British military commander?
+Expanded Query: Who was the British military commander in World War I? Name them.
+Keyword: British generals World War I
+
+Now give the Expanded Query and Keyword.
+
+Format your response like this:
+Expanded Query: <your rewritten query>
+Keyword: <1–3 keywords for image search>
+
+Only emit these two lines. Do not say anything else.
 
 Query: {query}
 Expanded Query:
 """
+    # result = subprocess.run(["ollama", "run", "llama3:instruct"], input=prompt.encode(), stdout=subprocess.PIPE)
+    # output = result.stdout.decode()
+    
+    output = run_together(prompt)
 
-    result = subprocess.run(["ollama", "run", "llama3:instruct"], input = prompt.encode(), stdout=subprocess.PIPE)
-    return result.stdout.decode()
+    # Parse output
+    lines = output.strip().splitlines()
+    expanded_query = ""
+    keyword = ""
+    for line in lines:
+        if line.startswith("Expanded Query:"):
+            expanded_query = line.replace("Expanded Query:", "").strip()
+        elif line.startswith("Keyword:"):
+            keyword = line.replace("Keyword:", "").strip()
 
+    return expanded_query, keyword
 
 
 
 def main(query,config):
     """Build prompt from query+chunks, run LLM, and return output."""
     
-    expanded_query = query
+    expanded_query, keyword = expand_query(query)
+
     # expanded_query = expand_query(query)
-    splade_chunks = splade(query=query, chunks_path=config.chunks_relative_path, doc_embs_path=config.splade_embds_relative_path,topk=config.topk)
+    # top_chunks = splade(query=query, chunks_path=config.chunks_relative_path, doc_embs_path=config.splade_embds_relative_path,topk=config.topk)
     # breakpoint()
-    rerank_chunks = rerank_with_cross_encoder(query=query, docs=splade_chunks)
+    top_chunks = zillis(expanded_query,topk=100)
+    rerank_chunks = rerank_with_cross_encoder(query=query, docs=top_chunks)
     # print(rerank_chunks,"\n\n\n\n")
     prompt = build_prompt(chunks=rerank_chunks, question=expanded_query)
     # print(prompt)
@@ -121,7 +162,7 @@ def main(query,config):
     output = run_together(prompt)
     
 
-    return splade_chunks, output
+    return top_chunks, output, keyword
 
 
 if __name__ == "__main__":
@@ -133,7 +174,8 @@ if __name__ == "__main__":
     with open('config.yaml','r') as f:
         entries = yaml.safe_load(f)
     config = Config(**entries)
-    _, output = main(query=args.q, config = config)
-    print(output)
+    _, output, keyword = main(query=args.q, config = config)
+    # print(output)
+    print(keyword)
 
 

@@ -1,16 +1,23 @@
-from sentence_transformers import  CrossEncoder
+from sentence_transformers import  SparseEncoder, CrossEncoder
+# import faiss
+import numpy as np
+import subprocess
+import re
+import torch
+from rank_bm25 import BM25Okapi
 import spacy
 import requests
 from together import Together
 import os
 import requests
-
+import json
+from huggingface_hub import login
 from dotenv import load_dotenv
 
 
 load_dotenv(override=True)
 from pymilvus import model, MilvusClient
-
+import json
 from dotenv import load_dotenv
 import os
 
@@ -71,8 +78,45 @@ def run_together(prompt):
 
 
 
+def sparse_retrieve(query,chunks,topk=5):
+    
+    def tokenize(text):
+        return re.findall(r"\w+", text.lower())
+    
+    tokenized_corpus = [tokenize(doc["text"]) for doc in chunks]
+    tokenized_q = tokenize(query)
+    bm25 = BM25Okapi(tokenized_corpus)
+    scores = bm25.get_scores(tokenized_q)
+    top_ids =scores.argsort()[::-1][:topk]
+    
+    return [(chunks[i], scores[i]) for i in top_ids]
 
+
+
+# def dense_retrieve(query, chunks,index = "faiss_index.bin",topk=4):
+#     index = faiss.read_index(index)
+#     encoder = SentenceTransformer("all-MiniLM-L6-v2")
+#     query_vec = encoder.encode([query])
+#     D, I = index.search(np.array(query_vec).astype("float32"), topk)
+#     return [(chunks[i], float(D[0][j])) for j, i in enumerate(I[0])]
+    
  
+ 
+def splade(query,chunks_path,doc_embs_path,topk=5):
+    download_data_hf(chunks_path)
+    with open(os.path.join("downloaded_data",chunks_path), "r") as f:
+        chunks = [json.loads(line) for line in f]
+    download_data_hf(doc_embs_path)
+    doc_embs = torch.load(os.path.join("downloaded_data",doc_embs_path), map_location=torch.device("cpu"))
+    breakpoint()
+    login(token=os.getenv("HF_API_KEY"))
+    model = SparseEncoder("naver/splade-v3").to("cpu")
+    queries = [query]
+    query_embeddings = model.encode_query(queries)
+    scores = model.similarity(query_embeddings, doc_embs).squeeze()
+    top_scores, top_indices =torch.topk(scores,k=topk)
+    
+    return [(chunks[i], float(top_scores[j])) for j,i in enumerate(top_indices)]
 
 
  

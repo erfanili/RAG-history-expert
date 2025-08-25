@@ -51,20 +51,18 @@ def answer(payload: QueryIn):
 
     try:
         # your main returns (splade_chunks, llm_output) per posted script
-        splade_chunks, llm_output = main(query=payload.question, config=cfg)
+        splade_chunks, llm_output, keyword = main(query=payload.question, config=cfg)
+
     except Exception as e:
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"backend error: {e}")
 
     response = {
         "answer": (llm_output or "").strip(),
+        "keyword": keyword,
         "sources": normalize_sources(splade_chunks, topk=cfg.topk if hasattr(cfg, "topk") else 10),
-        "confidence": None,       # fill in if you have a confidence metric
-        "debug": {                # optional helpful debug payload
-            "expanded_query": None
-        }
     }
     return response
 
 if __name__ == "__main__":
-    uvicorn.run("backend_api:app", host="127.0.0.1", port=8000, log_level="info")
+    uvicorn.run("main:app", host="127.0.0.1", port=8000, log_level="info")
