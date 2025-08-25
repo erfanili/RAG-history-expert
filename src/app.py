@@ -35,7 +35,10 @@ def get_wikipedia_infobox_image(query: str):
         "srsearch": query,
         "format": "json"
     }
-    search_response = requests.get(search_url, params=search_params)
+    headers = {
+    "User-Agent": "WWI-Answer-Engine/1.0 (https://rag-wwi-history.onrender.com)"
+}
+    search_response = requests.get(search_url, params=search_params,headers=headers)
     search_response.raise_for_status()
     search_data = search_response.json()
 
@@ -54,7 +57,7 @@ def get_wikipedia_infobox_image(query: str):
         "format": "json",
         "pithumbsize": 600  # image size in pixels
     }
-    page_response = requests.get(page_url, params=page_params)
+    page_response = requests.get(page_url, params=page_params,headers=headers)
     page_response.raise_for_status()
     page_data = page_response.json()
 
@@ -70,7 +73,8 @@ def get_wikipedia_infobox_image(query: str):
 
 
 # ---------- CONFIG ----------
-BACKEND_URL = os.getenv("WWI_ANSWER_API", "http://localhost:8000/answer")
+BACKEND_URL = "https://rag-wwi-history.onrender.com/answer"
+
 REQUEST_TIMEOUT = int(os.getenv("WWI_REQ_TIMEOUT", "15"))  # seconds
 
 # ---------- PAGE SETUP ----------
