@@ -1,13 +1,12 @@
 #utils.py
-from sentence_transformers import  CrossEncoder
+
 import spacy
 import requests
 from together import Together
 import os
 import numpy as np
 from pymilvus import model, MilvusClient
-import json
-from tqdm import tqdm
+
 
 from dotenv import load_dotenv
 
@@ -78,25 +77,7 @@ def run_together(prompt):
 
 
  
-cross_encoder = CrossEncoder("cross-encoder/ms-marco-MiniLM-L-6-v2")
 
-def rerank_with_cross_encoder(query, docs, top_k=30):
-    nlp = spacy.load("en_core_web_sm")
-    
-    sent_doc = []
-    paragraphs = [doc["text"] for doc,_ in docs]
-    for p in paragraphs:
-        sentences = [s.text for s in nlp(p).sents]
-        sent_doc.extend(sentences)
-    pairs = [(query, s) for s in sent_doc]
-    scores = cross_encoder.predict(pairs)  # higher = more relevant
-    
-    # Sort by score descending
-    ranked = sorted(zip(sent_doc, scores), key=lambda x: x[1], reverse=True)
-    top = ranked[:top_k]
-    top_formatted = [({"text":sent},score) for sent,score in top]
-    return top_formatted
-    
 
 
 
