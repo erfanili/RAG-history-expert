@@ -6,7 +6,12 @@ import sys,os
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 if ROOT not in sys.path:
     sys.path.insert(0, ROOT)
-from src.utils import splade, rerank_with_cross_encoder, run_together, zillis
+from src.utils import (
+                       rerank_with_cross_encoder,
+                       rerank_with_embeds,
+                       run_together,
+                       zillis,
+)
 import os
 from dotenv import load_dotenv
 
@@ -149,11 +154,13 @@ def main(query,config):
     
     expanded_query, keyword = expand_query(query)
 
+    print(expanded_query , keyword)
     # expanded_query = expand_query(query)
     # top_chunks = splade(query=query, chunks_path=config.chunks_relative_path, doc_embs_path=config.splade_embds_relative_path,topk=config.topk)
     # breakpoint()
-    top_chunks = zillis(expanded_query,topk=100)
-    rerank_chunks = rerank_with_cross_encoder(query=query, docs=top_chunks)
+    top_chunks = zillis(expanded_query,topk=10)
+    # rerank_chunks = rerank_with_cross_encoder(query=query, docs=top_chunks)
+    rerank_chunks = rerank_with_embeds(query=query,docs=top_chunks,topk=100)
     # print(rerank_chunks,"\n\n\n\n")
     prompt = build_prompt(chunks=rerank_chunks, question=expanded_query)
     # print(prompt)
@@ -174,7 +181,7 @@ if __name__ == "__main__":
         entries = yaml.safe_load(f)
     config = Config(**entries)
     _, output, keyword = main(query=args.q, config = config)
-\
+    print(output)
     print(keyword)
 
 

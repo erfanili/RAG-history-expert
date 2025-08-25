@@ -4,16 +4,17 @@ import spacy
 import requests
 from together import Together
 import os
-import requests
+import numpy as np
+from pymilvus import model, MilvusClient
+import json
+from tqdm import tqdm
 
 from dotenv import load_dotenv
 
 
 load_dotenv(override=True)
-from pymilvus import model, MilvusClient
 
-from dotenv import load_dotenv
-import os
+
 
 load_dotenv()
 COLLECTION = "wwi_history"
@@ -96,5 +97,52 @@ def rerank_with_cross_encoder(query, docs, top_k=30):
     top_formatted = [({"text":sent},score) for sent,score in top]
     return top_formatted
     
+
+
+
+
+# Load once, reuse
+nlp = spacy.load("en_core_web_sm")
+ef = model.dense.OpenAIEmbeddingFunction(
+    model_name="text-embedding-3-small",
+    api_key=os.getenv("OPENAI_API_KEY"),
+)
+
+def normalize(vecs):
+    return vecs / np.linalg.norm(vecs, axis=-1, keepdims=True)
+
+def rerank_with_embeds(query, docs, topk=100):
+    # Step 1: Extract and split paragraphs into sentences
+    paragraphs = [doc["text"] for doc, _ in docs]
+    sent_doc = []
+    for p in paragraphs:
+        sentences = [s.text.strip() for s in nlp(p).sents if s.text.strip()]
+        sent_doc.extend(sentences)
+
+    if not sent_doc:
+        return []
+
+    # Step 2: Embed query and sentences
+    sentence_embeddings = ef.encode_documents(sent_doc)
+    query_embedding = ef.encode_queries(query)
+
+    # Step 3: Cosine similarity
+    sentence_embeddings = np.array(sentence_embeddings)
+    query_embedding = np.array(query_embedding).reshape(1, -1)
+
+    sentence_embeddings = normalize(sentence_embeddings)
+    query_embedding = normalize(query_embedding)
+
+    scores = sentence_embeddings @ query_embedding.T
+    scores = scores.flatten()
+
+    # Step 4: Sort and format
+    ranked = sorted(zip(sent_doc, scores), key=lambda x: x[1], reverse=True)
+    top = ranked[:topk]
+    output =[({"text": sent}, float(score)) for sent, score in top]
+        
+    return output
+
+
 
 
