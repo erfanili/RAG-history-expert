@@ -1,4 +1,4 @@
-import json
+#answer_engine.py
 import argparse
 import subprocess
 import yaml
@@ -131,7 +131,6 @@ Expanded Query:
     
     output = run_together(prompt)
 
-    # Parse output
     lines = output.strip().splitlines()
     expanded_query = ""
     keyword = ""
@@ -175,7 +174,7 @@ if __name__ == "__main__":
         entries = yaml.safe_load(f)
     config = Config(**entries)
     _, output, keyword = main(query=args.q, config = config)
-    # print(output)
+\
     print(keyword)
 
 

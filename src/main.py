@@ -1,4 +1,4 @@
-# backend_api.py
+# main.py
 import os, sys
 import traceback
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
@@ -22,8 +22,7 @@ with open("config.yaml", "r") as f:
 
 class QueryIn(BaseModel):
     question: str
-    topic: str | None = None
-
+    
 def normalize_sources(retrieved: Any, topk: int = 10) -> List[Dict]:
     out = []
     for item in (retrieved or [])[:topk]:
