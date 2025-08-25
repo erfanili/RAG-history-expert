@@ -6,8 +6,7 @@ Expected backend: POST JSON -> returns JSON with keys like:
   { "answer": "...", "sources": [...], "confidence": 0.92, ... }
 The UI is stateless and simple by design.
 """
-import streamlit.components.v1 as components
-import re
+
 import os
 import requests
 import streamlit as st
@@ -17,12 +16,8 @@ from typing import Any, Dict, List
 
 
 import requests
-from IPython.display import Image, display
-from bs4 import BeautifulSoup
-import urllib.parse
 
 import requests
-import re
 
 import requests
 
@@ -75,7 +70,7 @@ def get_wikipedia_infobox_image(query: str):
 # ---------- CONFIG ----------
 BACKEND_URL = "https://rag-wwi-history.onrender.com/answer"
 
-REQUEST_TIMEOUT = int(os.getenv("WWI_REQ_TIMEOUT", "15"))  # seconds
+REQUEST_TIMEOUT = int(os.getenv("WWI_REQ_TIMEOUT", "60"))  # seconds
 
 # ---------- PAGE SETUP ----------
 with st.container():

@@ -1,3 +1,0 @@
-chunks_relative_path: chunks_single_par.jsonl
-splade_embds_relative_path: splade_doc_embs_single_par.pt
-topk: 100
