@@ -45,10 +45,8 @@ def build_prompt(chunks, question):
     Avoid general statements.
     Try to keep all relevant details in your answer.
     Avoid trivial statements.
-    Answer between 2 and 5 paragraphs.
-    Only give the answer.
+    Give no more than 3 paragraphs.
     
-
     Context: {context}
     
     Question: {question}
