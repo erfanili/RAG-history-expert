@@ -38,14 +38,14 @@ def build_prompt(chunks, question):
     prompt = f"""You are a historian specializing in World War I.
     You are given a question and a context. 
     Step 1: find the parts of the context that are relevant to the question.
-    Step 2: put the relevant parts into a coherent long passage
+    Step 2: put the relevant parts into a coherent passage
     Step 2: use the passage to answer the question definitively with all relevant details in the context.
     Answer the  question **strictly based on the provided context**.
-    Don't say "Based on the provided context" or similar expressions.
+    Don't say "Based on the provided context" or similar expressions. Don't mention the context at all.
     Avoid general statements.
     Try to keep all relevant details in your answer.
-    Avoid trivial statements.
-    Give no more than 4 paragraphs.
+    Give no more than 4 short paragraphs.
+    Do not repeat any point.
     
     Context: {context}
     
